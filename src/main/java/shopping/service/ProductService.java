@@ -12,11 +12,17 @@ import java.util.Optional;
 @Service
 public class ProductService {
 
+    private final ProductRepository productRepository;
+    private final BadWordFilter badWordFilter;
+
     @Autowired
-    private ProductRepository productRepository;
+    public ProductService(ProductRepository productRepository, BadWordFilter badWordFilter) {
+        this.productRepository = productRepository;
+        this.badWordFilter = badWordFilter;
+    }
 
     public Product createProduct(Product product) {
-        if (BadWordFilter.containsBadWords(product.getName())) {
+        if (badWordFilter.containsBadWords(product.getName())) {
             throw new IllegalArgumentException("Product name contains inappropriate language.");
         }
         return productRepository.save(product);
@@ -31,14 +37,14 @@ public class ProductService {
     }
 
     public Product updateProduct(Long id, Product updatedProduct) {
-        if (BadWordFilter.containsBadWords(updatedProduct.getName())) {
+        if (badWordFilter.containsBadWords(updatedProduct.getName())) {
             throw new IllegalArgumentException("Product name contains inappropriate language.");
         }
         return productRepository.findById(id)
                 .map(product -> {
-                    product.setName(updatedProduct.getName());
-                    product.setPrice(updatedProduct.getPrice());
-                    product.setImageUrl(updatedProduct.getImageUrl());
+                    product.setName(updatedProduct.getName() != null ? updatedProduct.getName() : product.getName());
+                    product.setPrice(updatedProduct.getPrice() != 0 ? updatedProduct.getPrice() : product.getPrice());
+                    product.setImageUrl(updatedProduct.getImageUrl() != null ? updatedProduct.getImageUrl() : product.getImageUrl());
                     return productRepository.save(product);
                 })
                 .orElseThrow(() -> new RuntimeException("Product not found"));

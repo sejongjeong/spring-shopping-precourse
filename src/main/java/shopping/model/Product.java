@@ -23,7 +23,18 @@ public class Product {
     @NotBlank(message = "Product image URL is mandatory")
     private String imageUrl;
 
-    // Getters and Setters
+    // 기본 생성자
+    public Product() {
+    }
+
+    // 필드를 초기화하는 생성자
+    public Product(String name, double price, String imageUrl) {
+        this.name = name;
+        this.price = price;
+        this.imageUrl = imageUrl;
+    }
+
+    // Getter와 Setter
     public Long getId() {
         return id;
     }

@@ -3,29 +3,38 @@ package shopping.util;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.client.RestTemplate;
-import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.http.client.reactive.ReactorClientHttpConnector;
+import org.springframework.web.reactive.function.client.WebClient;
+import reactor.netty.http.client.HttpClient;
+import org.springframework.web.reactive.function.client.ClientResponse;
 
 public class BadWordFilter {
 
     private static final String PURGOMALUM_API_URL = "https://www.purgomalum.com/service/containsprofanity?text=";
+    private final WebClient webClient;
 
-    public static boolean containsBadWords(String text) {
-        RestTemplate restTemplate = new RestTemplate();
+    public BadWordFilter() {
+        HttpClient httpClient = HttpClient.create();
+        this.webClient = WebClient.builder()
+                .clientConnector(new ReactorClientHttpConnector(httpClient))
+                .baseUrl(PURGOMALUM_API_URL)
+                .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.TEXT_PLAIN_VALUE)
+                .build();
+    }
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.TEXT_PLAIN);
-        headers.setAccept(MediaType.parseMediaTypes("text/plain"));
+    public boolean containsBadWords(String text) {
+        ClientResponse response = webClient.get()
+                .uri(uriBuilder -> uriBuilder.path(text).build())
+                .accept(MediaType.TEXT_PLAIN)
+                .exchange()
+                .block();
 
-        try {
-            ResponseEntity<String> response = restTemplate.getForEntity(PURGOMALUM_API_URL + text, String.class);
-            return Boolean.parseBoolean(response.getBody());
-        } catch (HttpClientErrorException e) {
-            if (e.getStatusCode() == HttpStatus.NOT_ACCEPTABLE) {
-                return false; // 기본적으로 false로 처리, 필요시 로깅 추가 가능
-            }
-            throw e;
+        if (response != null && response.statusCode() == HttpStatus.OK) {
+            return Boolean.parseBoolean(response.bodyToMono(String.class).block());
+        } else if (response != null && response.statusCode() == HttpStatus.NOT_ACCEPTABLE) {
+            return false;
+        } else {
+            throw new RuntimeException("Error occurred while checking bad words");
         }
     }
 }
